@@ -1,3 +1,5 @@
+const dgram = require('dgram');
+
 let Service, Characteristic;
 
 let status = false;
@@ -11,8 +13,27 @@ module.exports = (homebridge) => {
 
 function BedsideLamp(log, config) {
     this.log = log;
-    this.confin = config;
+    this.config = config;
+    this.addr = '239.255.255.250';
+    this.port = 1982;
+
+    this.sock = dgram.createSocket('udp4');
+
+    const message = Buffer.from(
+        'M-SEARCH * HTTP/1.1\r\n' +
+        'MAN: "ssdp:discover"\r\n' +
+        'ST: wifi_bulb'
+    );
+
+    this.sock.on('message', handleMessage.bind(this));
+    this.sock.send(message, 0, message.length, this.port, this.addr);
 }
+
+
+function handleMessage(message) {
+    this.log(message.toString())
+}
+
 
 BedsideLamp.prototype = {
     getServices: function () {
