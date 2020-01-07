@@ -1,4 +1,5 @@
 const dgram = require('dgram');
+const net = require('net');
 
 let Service, Characteristic;
 
@@ -14,8 +15,6 @@ module.exports = (homebridge) => {
 function BedsideLamp(log, config) {
     this.log = log;
     this.config = config;
-    this.addr = '239.255.255.250';
-    this.port = 1982;
 
     this.sock = dgram.createSocket('udp4');
 
@@ -26,12 +25,22 @@ function BedsideLamp(log, config) {
     );
 
     this.sock.on('message', handleMessage.bind(this));
-    this.sock.send(message, 0, message.length, this.port, this.addr);
+    this.sock.send(message, 0, message.length, 1982, '239.255.255.250');
 }
 
 
 function handleMessage(message) {
-    this.log(message.toString())
+    const data = {};
+    this.log(message.toString());
+    let rows = message.toString().split('\r\n');
+
+    rows.forEach(row => {
+        const [k, v] = row.split(': ');
+        data[k] = v;
+    });
+
+    [this.host, this.port] = (data['Location'].split('//')[1]).split(":");
+    console.log(this.host, this.port);
 }
 
 
@@ -78,6 +87,21 @@ BedsideLamp.prototype = {
 
     setOnCharacteristicHandler(value, callback) {
         this.log("Called set on. Value: " + value);
+
+        if (!this.connection || this.connection.destroyed) {
+            this.connection = net.connect(this.port, this.host);
+        }
+
+        const req = {
+            id: 1,
+            method: 'set_power',
+            params: [value ? 'on' : 'off', 'smooth', 100],
+        };
+
+        const msg = JSON.stringify(req);
+
+        this.connection.write(msg + '\r\n');
+
         status = value;
         callback(null)
     },
