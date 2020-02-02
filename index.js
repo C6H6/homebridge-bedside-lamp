@@ -30,17 +30,18 @@ function BedsideLamp(log, config) {
 
 
 function handleMessage(message) {
-    const data = {};
-    this.log(message.toString());
+    this.data = {};
     let rows = message.toString().split('\r\n');
+
+    this.log(rows);
 
     rows.forEach(row => {
         const [k, v] = row.split(': ');
-        data[k] = v;
+        this.data[k] = v;
     });
 
-    [this.host, this.port] = (data['Location'].split('//')[1]).split(":");
-    console.log(this.host, this.port);
+    [this.host, this.port] = (this.data['Location'].split('//')[1]).split(":");
+    this.log(this.host, this.port);
 }
 
 
@@ -75,22 +76,25 @@ BedsideLamp.prototype = {
             .on('get', this.getColorTemperatureCharacteristicHandler.bind(this))
             .on('set', this.setColorTemperatureCharacteristicHandler.bind(this));
 
-        // this.informationService = informationService;
-        // this.LightbulbService = LightbulbService;
         return [informationService, LightbulbService];
+    },
+
+    getConnection() {
+        if (!this.connection || this.connection.destroyed) {
+            this.connection = net.connect(this.port, this.host);
+        }
+
+        return this.connection
     },
 
     getOnCharacteristicHandler(callback) {
         this.log("Called get on");
-        callback(null, status)
+        let value = this.data['power'] === 'on';
+        callback(null, value)
     },
 
     setOnCharacteristicHandler(value, callback) {
-        this.log("Called set on. Value: " + value);
-
-        if (!this.connection || this.connection.destroyed) {
-            this.connection = net.connect(this.port, this.host);
-        }
+        let conn = this.getConnection();
 
         const req = {
             id: 1,
@@ -99,22 +103,31 @@ BedsideLamp.prototype = {
         };
 
         const msg = JSON.stringify(req);
+        conn.write(msg + '\r\n');
 
-        this.connection.write(msg + '\r\n');
-
-        status = value;
+        this.data['power'] = value;
         callback(null)
     },
 
     getBrightnessCharacteristicHandler(callback) {
-        this.log("Called get brightness");
-        callback(null, status)
+        callback(null, parseInt(this.data['bright']))
     },
 
     setBrightnessCharacteristicHandler(value, callback) {
-        this.log("Called set brightness. Value: " + value);
-        status = value;
-        callback(null)
+        let conn = this.getConnection();
+        value = parseInt(value);
+
+        const req = {
+            id: 1,
+            method: 'set_bright',
+            params: [parseInt(value), 'smooth', 100],
+        };
+
+        const msg = JSON.stringify(req);
+        conn.write(msg + '\r\n');
+
+        this.data['bright'] = value;
+        callback(null);
     },
 
     getSaturationCharacteristicHandler(callback) {
