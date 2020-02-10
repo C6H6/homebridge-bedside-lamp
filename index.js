@@ -88,9 +88,7 @@ BedsideLamp.prototype = {
     },
 
     getOnCharacteristicHandler(callback) {
-        this.log("Called get on");
-        let value = this.data['power'] === 'on';
-        callback(null, value)
+        callback(null, this.data['power'] === 'on')
     },
 
     setOnCharacteristicHandler(value, callback) {
@@ -131,19 +129,17 @@ BedsideLamp.prototype = {
     },
 
     getSaturationCharacteristicHandler(callback) {
-        this.log("Called get hue");
-        callback(null, status)
+        callback(null, parseInt(this.data['sat']));
     },
 
     setSaturationCharacteristicHandler(value, callback) {
-        this.log("Called set hue. Value: " + value);
+        this.log("Called set sat. Value: " + value);
         status = value;
         callback(null)
     },
 
     getHueCharacteristicHandler(callback) {
-        this.log("Called get hue");
-        callback(null, status)
+        callback(null, parseInt(this.data['hue']));
     },
 
     setHueCharacteristicHandler(value, callback) {
@@ -153,13 +149,24 @@ BedsideLamp.prototype = {
     },
 
     getColorTemperatureCharacteristicHandler(callback) {
-        this.log("Called get color/temperature");
-        callback(null, status)
+        callback(null, parseInt(this.data['ct']))
     },
 
     setColorTemperatureCharacteristicHandler(value, callback) {
+        value = Math.floor((((value - 140) * (-4800)) / 360) + 6500);
         this.log("Called set color/temperature. Value: " + value);
-        status = value;
-        callback(null)
+
+        let conn = this.getConnection();
+        const req = {
+            id: 1,
+            method: 'set_ct_abx',
+            params: [value, 'smooth', 100],
+        };
+
+        const msg = JSON.stringify(req);
+        conn.write(msg + '\r\n');
+
+        this.data['ct'] = value;
+        callback(null);
     },
 };
