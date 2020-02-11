@@ -133,8 +133,20 @@ BedsideLamp.prototype = {
     },
 
     setSaturationCharacteristicHandler(value, callback) {
-        this.log("Called set sat. Value: " + value);
-        status = value;
+        let sat = parseInt(value);
+        this.data['sat'] = sat;
+        let hue = parseInt(this.data['hue']);
+
+        let conn = this.getConnection();
+        const req = {
+            id: 1,
+            method: 'set_hsv',
+            params: [hue, sat, 'smooth', 100],
+        };
+
+        const msg = JSON.stringify(req);
+        conn.write(msg + '\r\n');
+
         callback(null)
     },
 
@@ -143,8 +155,20 @@ BedsideLamp.prototype = {
     },
 
     setHueCharacteristicHandler(value, callback) {
-        this.log("Called set hue. Value: " + value);
-        status = value;
+        let hue = parseInt(value);
+        this.data['hue'] = hue;
+        let sat = parseInt(this.data['sat']);
+
+        let conn = this.getConnection();
+        const req = {
+            id: 1,
+            method: 'set_hsv',
+            params: [hue, sat, 'smooth', 100],
+        };
+
+        const msg = JSON.stringify(req);
+        conn.write(msg + '\r\n');
+
         callback(null)
     },
 
